@@ -31,6 +31,9 @@
     <string name="crop_hint_restore">Tap to restore your last crop</string>
     <string name="switch_freeform">Circle to crop</string>
     <string name="switch_freeform_note">Draw a freeform loop around what you want and its outline becomes the crop box. Turn off to drag a rectangle directly.</string>
+    <string name="switch_snap">Snap to screen content</string>
+    <string name="switch_snap_note">Crop edges snap to the buttons, cards, and images that were on screen. Element positions are read only at the moment of capture and never stored. Needs the accessibility fallback (step 2).</string>
+    <string name="error_snap_needs_accessibility">Enable the accessibility fallback (step 2) first — snapping reads element positions through it.</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_copy">Copy</string>
     <string name="action_share">Share</string>
@@ -44,5 +47,5 @@
     <string name="error_no_settings">Couldn\'t open settings on this device.</string>
 
     <string name="accessibility_service_label">Circle to Share</string>
-    <string name="accessibility_service_description">Lets Circle to Share capture the screen when you trigger it — with the assistant gesture or the app\'s floating button — so you can crop and share it. Nothing is captured until you trigger it, and nothing is saved to your device.</string>
+    <string name="accessibility_service_description">Lets Circle to Share capture the screen when you trigger it — with the assistant gesture or the app\'s floating button — so you can crop and share it. Screen content (element positions) is read only at the moment of capture, and only to align the crop box with what\'s on screen. Nothing is captured until you trigger it, nothing is saved to your device, and nothing ever leaves it.</string>
 </resources>

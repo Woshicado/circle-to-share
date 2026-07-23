@@ -162,6 +162,23 @@
             android:textSize="13sp"
             android:textColor="?android:attr/textColorSecondary" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_snap"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/switch_snap"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/snap_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/switch_snap_note"
+            android:textSize="13sp"
+            android:textColor="?android:attr/textColorSecondary" />
+
         <Space
             android:layout_width="match_parent"
             android:layout_height="32dp" />

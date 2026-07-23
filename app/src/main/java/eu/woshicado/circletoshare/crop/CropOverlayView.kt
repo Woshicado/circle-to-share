@@ -118,6 +118,20 @@ class CropOverlayView @JvmOverloads constructor(
     // Breathing room so a hand-drawn loop doesn't clip the circled content.
     private val strokePadding = dp(10f)
 
+    // --- Snap-to-content state ---------------------------------------------
+    // Element bounds in bitmap space (scaled once from screen pixels), plus
+    // the view-space candidate lines derived from them: every left/right edge
+    // becomes a vertical line in snapXs, every top/bottom a horizontal line
+    // in snapYs. Sorted and deduped for binary search.
+    private var snapRectsBitmap: List<RectF> = emptyList()
+    private var snapXs = FloatArray(0)
+    private var snapYs = FloatArray(0)
+    private val snapThreshold = dp(10f)
+    // Currently engaged snap line per axis (NaN = free) — tracked only to fire
+    // one haptic tick per engagement, not to make snapping stateful.
+    private var engagedSnapX = Float.NaN
+    private var engagedSnapY = Float.NaN
+
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val dimPaint = Paint().apply { color = Color.argb(140, 0, 0, 0) }
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -144,6 +158,9 @@ class CropOverlayView @JvmOverloads constructor(
         selection = null
         mode = Mode.NONE
         resetStroke()
+        // Snap bounds belong to a specific capture — the host sets fresh ones
+        // (or null) right after this.
+        setSnapBounds(null)
         updateMatrix()
         listener?.onSelectionChanged(false)
         invalidate()
@@ -154,6 +171,7 @@ class CropOverlayView @JvmOverloads constructor(
         selection = null
         mode = Mode.NONE
         resetStroke()
+        setSnapBounds(null)
         invalidate()
     }
 
@@ -205,6 +223,147 @@ class CropOverlayView @JvmOverloads constructor(
         invalidate()
     }
 
+    /**
+     * Element bounds captured with the screenshot, or null to disable
+     * snapping. Scaled to bitmap space once here; the view-space candidate
+     * lines are (re)derived in [updateMatrix] so rotation keeps them valid.
+     */
+    fun setSnapBounds(snap: SnapBounds?) {
+        val b = bitmap
+        if (snap == null || b == null ||
+            snap.screenWidth <= 0 || snap.screenHeight <= 0
+        ) {
+            snapRectsBitmap = emptyList()
+            snapXs = FloatArray(0)
+            snapYs = FloatArray(0)
+            return
+        }
+        // Normally 1.0 — guards against a system shot whose resolution
+        // differs from the display's.
+        val sx = b.width / snap.screenWidth.toFloat()
+        val sy = b.height / snap.screenHeight.toFloat()
+        snapRectsBitmap = snap.rects.map {
+            RectF(it.left * sx, it.top * sy, it.right * sx, it.bottom * sy)
+        }
+        rebuildSnapLines()
+    }
+
+    /** Map the bitmap-space element rects into view space and derive the
+     *  sorted, deduped candidate lines. */
+    private fun rebuildSnapLines() {
+        if (snapRectsBitmap.isEmpty() || imageBounds.isEmpty) {
+            snapXs = FloatArray(0)
+            snapYs = FloatArray(0)
+            return
+        }
+        val xs = ArrayList<Float>(snapRectsBitmap.size * 2)
+        val ys = ArrayList<Float>(snapRectsBitmap.size * 2)
+        val mapped = RectF()
+        val minX = imageBounds.left - snapThreshold
+        val maxX = imageBounds.right + snapThreshold
+        val minY = imageBounds.top - snapThreshold
+        val maxY = imageBounds.bottom + snapThreshold
+        for (rect in snapRectsBitmap) {
+            mapped.set(rect)
+            imageMatrix.mapRect(mapped)
+            if (mapped.left in minX..maxX) xs.add(mapped.left)
+            if (mapped.right in minX..maxX) xs.add(mapped.right)
+            if (mapped.top in minY..maxY) ys.add(mapped.top)
+            if (mapped.bottom in minY..maxY) ys.add(mapped.bottom)
+        }
+        snapXs = sortedDeduped(xs)
+        snapYs = sortedDeduped(ys)
+    }
+
+    private fun sortedDeduped(values: ArrayList<Float>): FloatArray {
+        if (values.isEmpty()) return FloatArray(0)
+        values.sort()
+        val out = ArrayList<Float>(values.size)
+        for (v in values) {
+            if (out.isEmpty() || v - out.last() > 1f) out.add(v)
+        }
+        return out.toFloatArray()
+    }
+
+    /** Nearest candidate within [snapThreshold] of [value], else NaN. */
+    private fun nearestSnapLine(value: Float, candidates: FloatArray): Float {
+        if (candidates.isEmpty()) return Float.NaN
+        // Binary search for the insertion point, then compare both neighbors.
+        var lo = 0
+        var hi = candidates.size
+        while (lo < hi) {
+            val mid = (lo + hi) ushr 1
+            if (candidates[mid] < value) lo = mid + 1 else hi = mid
+        }
+        var best = Float.NaN
+        var bestDist = snapThreshold
+        if (lo < candidates.size && abs(candidates[lo] - value) <= bestDist) {
+            best = candidates[lo]
+            bestDist = abs(candidates[lo] - value)
+        }
+        if (lo > 0 && abs(candidates[lo - 1] - value) < bestDist) {
+            best = candidates[lo - 1]
+        }
+        return best
+    }
+
+    /** Snap [value] on the x-axis (stateless), ticking on new engagement. */
+    private fun snapX(value: Float): Float {
+        val line = nearestSnapLine(value, snapXs)
+        if (line.isNaN()) {
+            engagedSnapX = Float.NaN
+            return value
+        }
+        if (line != engagedSnapX) {
+            engagedSnapX = line
+            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        }
+        return line
+    }
+
+    /** Snap [value] on the y-axis (stateless), ticking on new engagement. */
+    private fun snapY(value: Float): Float {
+        val line = nearestSnapLine(value, snapYs)
+        if (line.isNaN()) {
+            engagedSnapY = Float.NaN
+            return value
+        }
+        if (line != engagedSnapY) {
+            engagedSnapY = line
+            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        }
+        return line
+    }
+
+    private fun resetSnapEngagement() {
+        engagedSnapX = Float.NaN
+        engagedSnapY = Float.NaN
+    }
+
+    /**
+     * Snap all four edges of a freshly created box (circle result or
+     * rectangle rubber-band, on release) independently, then clamp to the
+     * image. One tick if anything moved.
+     */
+    private fun snapSelectionEdges(sel: RectF) {
+        var moved = false
+        val l = nearestSnapLine(sel.left, snapXs)
+        val r = nearestSnapLine(sel.right, snapXs)
+        val t = nearestSnapLine(sel.top, snapYs)
+        val b = nearestSnapLine(sel.bottom, snapYs)
+        if (!l.isNaN() && l != sel.left) { sel.left = l; moved = true }
+        if (!r.isNaN() && r != sel.right) { sel.right = r; moved = true }
+        if (!t.isNaN() && t != sel.top) { sel.top = t; moved = true }
+        if (!b.isNaN() && b != sel.bottom) { sel.bottom = b; moved = true }
+        sel.set(
+            sel.left.coerceIn(imageBounds.left, imageBounds.right),
+            sel.top.coerceIn(imageBounds.top, imageBounds.bottom),
+            sel.right.coerceIn(imageBounds.left, imageBounds.right),
+            sel.bottom.coerceIn(imageBounds.top, imageBounds.bottom)
+        )
+        if (moved) performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         updateMatrix()
@@ -228,6 +387,9 @@ class CropOverlayView @JvmOverloads constructor(
         imageMatrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER)
         imageMatrix.mapRect(imageBounds, src)
         imageMatrix.invert(inverseMatrix)
+        // The view-space candidate lines depend on the mapping — re-derive
+        // them (handles rotation; the bitmap-space rects stay valid).
+        rebuildSnapLines()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -283,6 +445,7 @@ class CropOverlayView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 downX = x
                 downY = y
+                resetSnapEngagement()
                 val sel = selection
                 val corner = sel?.let { hitCorner(it, x, y) } ?: -1
                 mode = when {
@@ -347,7 +510,11 @@ class CropOverlayView @JvmOverloads constructor(
                         // A plain tap outside the selection clears it.
                         selection = null
                     }
+                    // A freshly drawn box (circle or rubber-band) snaps its
+                    // edges to nearby element bounds on release.
+                    selection?.let { snapSelectionEdges(it) }
                 }
+                resetSnapEngagement()
                 // Discard incidental taps / tiny scribbles.
                 selection?.let {
                     if (it.width() < minSelection || it.height() < minSelection) {
@@ -380,7 +547,12 @@ class CropOverlayView @JvmOverloads constructor(
         return -1
     }
 
-    private fun resize(sel: RectF, x: Float, y: Float) {
+    private fun resize(sel: RectF, xRaw: Float, yRaw: Float) {
+        // Snap from the RAW finger position every event (stateless): the edge
+        // pulls to a line while the finger is within the threshold band and
+        // releases the moment it leaves — no sticky state, no jitter.
+        val x = snapX(xRaw)
+        val y = snapY(yRaw)
         when (activeCorner) {
             0 -> { sel.left = x; sel.top = y }
             1 -> { sel.right = x; sel.top = y }

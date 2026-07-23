@@ -11,11 +11,14 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.os.SystemClock
+import android.provider.Settings
 import android.service.voice.VoiceInteractionSession
 import android.view.Display
 import android.view.View
 import android.widget.Toast
 import androidx.core.view.WindowCompat
+import eu.woshicado.circletoshare.Prefs
 import eu.woshicado.circletoshare.R
 import eu.woshicado.circletoshare.capture.ScreenshotAccessibilityService
 import eu.woshicado.circletoshare.crop.CropScreen
@@ -40,6 +43,45 @@ class AssistSession(context: Context) : VoiceInteractionSession(context) {
     // System shot set aside on the bubble path — used only if the clean
     // re-capture fails (it shows the bubble, which beats failing outright).
     private var fallbackSystemShot: Bitmap? = null
+    // Snap bounds collected at onShow — the accessibility framework hasn't
+    // yet recomputed visibility for our (occluding) session window at that
+    // moment, so the app's node tree is still fully visible. Collecting later
+    // (when the screenshot arrives) yields a sparse, occlusion-clipped set.
+    private var pendingSnap: eu.woshicado.circletoshare.crop.SnapBounds? = null
+    // When the session was shown — anchor for the zoom-settle deadline below.
+    private var showUptime = 0L
+
+    /**
+     * Invoking the assistant plays a system zoom-out animation on the app
+     * behind us. An accessibility capture taken mid-animation bakes that zoom
+     * into the screenshot (~2% scale), visibly misaligning it — and any snap
+     * bounds — from the real layout. Measured on a Pixel at 1x animation
+     * scale: still zoomed ~500ms after onShow, mostly settled ~700ms, and the
+     * tail varies run to run — 800ms was reliably clean. So captures we take
+     * ourselves wait this long after [showUptime]; scaled up if the user runs
+     * slower animations, and skipped when animations are off.
+     */
+    private fun settleDelayMs(): Long {
+        val r = context.contentResolver
+        val scale = maxOf(
+            Settings.Global.getFloat(r, Settings.Global.WINDOW_ANIMATION_SCALE, 1f),
+            Settings.Global.getFloat(r, Settings.Global.TRANSITION_ANIMATION_SCALE, 1f),
+            Settings.Global.getFloat(r, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+        )
+        // 150ms floor: the bubble teardown needs a frame or two before a
+        // clean capture even with animations disabled.
+        return if (scale <= 0f) 150L else (800f * scale.coerceAtLeast(1f)).toLong()
+    }
+
+    /** Run an accessibility capture once the zoom animation has settled. */
+    private fun scheduleSettledCapture() {
+        val gen = showGeneration
+        val remaining =
+            (showUptime + settleDelayMs() - SystemClock.uptimeMillis()).coerceAtLeast(0L)
+        ui.postDelayed({
+            if (gen == showGeneration && screenshot == null) captureViaAccessibility()
+        }, remaining)
+    }
     private lateinit var cropScreen: CropScreen
 
     private val screenshotTimeout = Runnable {
@@ -88,6 +130,15 @@ class AssistSession(context: Context) : VoiceInteractionSession(context) {
         // frozen image.
         if (visible) return
         visible = true
+        showUptime = SystemClock.uptimeMillis()
+        // Grab the snap bounds NOW — before the accessibility framework
+        // notices our window covering the app and marks its nodes invisible
+        // (or drops the window from getWindows() entirely).
+        pendingSnap = if (Prefs.isSnapEnabled(context)) {
+            ScreenshotAccessibilityService.instance?.collectSnapBounds()
+        } else {
+            null
+        }
         if (!watchingScreen) {
             watchingScreen = true
             context.registerReceiver(
@@ -117,18 +168,21 @@ class AssistSession(context: Context) : VoiceInteractionSession(context) {
         when {
             // The bubble had a crop overlay open: reuse its clean screenshot so
             // that overlay isn't baked into this one (no double dim / ghost bar).
-            reuse != null -> onScreenshotReady(reuse)
+            reuse != null -> {
+                android.util.Log.d("CircleToShare", "assist source: bubble-reuse")
+                onScreenshotReady(reuse)
+            }
             // The bubble was on screen (implies service != null): the system
-            // shot would contain it, so re-capture cleanly now that it's gone.
+            // shot would contain it, so re-capture cleanly now that it's gone
+            // (and the zoom animation has settled).
             bubbleWasShowing -> {
                 awaitingOwnCapture = true
-                val gen = showGeneration
-                ui.postDelayed({
-                    if (gen == showGeneration && screenshot == null) captureViaAccessibility()
-                }, 150)
+                scheduleSettledCapture()
             }
-            // Normal path: use the system screenshot (falls back to accessibility).
-            else -> ui.postDelayed(screenshotTimeout, 450)
+            // Normal path: use the system screenshot if it arrives (it's taken
+            // at gesture time, pre-animation); otherwise fall back to our own
+            // capture once the zoom animation has settled.
+            else -> ui.postDelayed(screenshotTimeout, settleDelayMs().coerceAtLeast(450L))
         }
     }
 
@@ -146,7 +200,14 @@ class AssistSession(context: Context) : VoiceInteractionSession(context) {
             return
         }
         ui.removeCallbacks(screenshotTimeout)
-        if (systemShot != null) onScreenshotReady(systemShot) else captureViaAccessibility()
+        if (systemShot != null) {
+            android.util.Log.d("CircleToShare", "assist source: system")
+            onScreenshotReady(systemShot)
+        } else {
+            // An explicit "no shot for you" — capture ourselves, but not
+            // before the zoom animation settles.
+            scheduleSettledCapture()
+        }
     }
 
     override fun onHide() {
@@ -161,6 +222,7 @@ class AssistSession(context: Context) : VoiceInteractionSession(context) {
         ui.removeCallbacks(screenshotTimeout)
         screenshot = null
         fallbackSystemShot = null
+        pendingSnap = null
         awaitingOwnCapture = false
         // Drop the frozen image now, so the next show doesn't flash this
         // session's (possibly sensitive) screenshot while the new capture is
@@ -187,8 +249,12 @@ class AssistSession(context: Context) : VoiceInteractionSession(context) {
         service.capture { bitmap ->
             ui.post {
                 if (gen != showGeneration) return@post // session was hidden since
-                if (bitmap != null) onScreenshotReady(bitmap)
-                else captureFailed(context.getString(R.string.error_capture_failed))
+                if (bitmap != null) {
+                    android.util.Log.d("CircleToShare", "assist source: accessibility")
+                    onScreenshotReady(bitmap)
+                } else {
+                    captureFailed(context.getString(R.string.error_capture_failed))
+                }
             }
         }
     }
@@ -209,7 +275,12 @@ class AssistSession(context: Context) : VoiceInteractionSession(context) {
             bitmap
         }
         screenshot = software
-        cropScreen.setBitmap(software)
+        android.util.Log.d(
+            "CircleToShare",
+            "assist shot ${software.width}x${software.height}, " +
+                "snap rects: ${pendingSnap?.rects?.size ?: 0}"
+        )
+        cropScreen.setBitmap(software, pendingSnap)
     }
 
     private fun deliver(share: Boolean, rect: Rect?) {

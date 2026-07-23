@@ -100,13 +100,14 @@ class CropScreen(context: Context) : FrameLayout(context) {
         )
     }
 
-    fun setBitmap(bitmap: android.graphics.Bitmap) {
+    fun setBitmap(bitmap: android.graphics.Bitmap, snap: SnapBounds? = null) {
         // Apply the current crop-gesture preference (freeform circle vs. box).
         val freeform = eu.woshicado.circletoshare.Prefs.isFreeformCrop(context)
         cropView.freeform = freeform
 
         setBackgroundColor(Color.BLACK)
         cropView.setBitmap(bitmap)
+        cropView.setSnapBounds(snap)
         cropView.visibility = View.VISIBLE
         hintView.visibility = View.VISIBLE
         buttonBar.visibility = View.VISIBLE
@@ -132,6 +133,9 @@ class CropScreen(context: Context) : FrameLayout(context) {
     fun clear() {
         background = null
         cropView.clear()
+        // Drop the snap lines too — a reused instance must not snap to a
+        // previous session's layout.
+        cropView.setSnapBounds(null)
         cropView.visibility = View.GONE
         hintView.visibility = View.GONE
         buttonBar.visibility = View.GONE

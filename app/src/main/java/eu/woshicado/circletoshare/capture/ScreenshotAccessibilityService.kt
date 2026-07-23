@@ -23,10 +23,14 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.ImageView
 import android.widget.Toast
+import eu.woshicado.circletoshare.Prefs
 import eu.woshicado.circletoshare.R
 import eu.woshicado.circletoshare.crop.CropScreen
+import eu.woshicado.circletoshare.crop.SnapBounds
 import eu.woshicado.circletoshare.share.ShareHelper
 import kotlin.math.abs
 
@@ -47,6 +51,11 @@ class ScreenshotAccessibilityService : AccessibilityService() {
         private const val KEY_BUBBLE_X = "bubble_x"
         private const val KEY_BUBBLE_Y = "bubble_y"
         private const val UNSET = Int.MIN_VALUE
+
+        // Budget for the snap-bounds tree walk — node access is Binder IPC,
+        // so keep the whole collection pass in the tens of milliseconds.
+        private const val SNAP_MAX_NODES = 400
+        private const val SNAP_MAX_DEPTH = 25
 
         fun isBubbleEnabled(context: Context): Boolean =
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -228,6 +237,80 @@ class ScreenshotAccessibilityService : AccessibilityService() {
         )
     }
 
+    // --- Snap-to-content bounds ----------------------------------------------
+
+    /**
+     * Bounds of the UI elements currently on screen, for snap-to-content
+     * cropping. Read via the window/node tree at the moment of capture only —
+     * never stored. Null when window introspection is unavailable (service
+     * still connecting, flag not granted) or nothing useful is visible.
+     *
+     * Synchronous on the main thread, but capped (≤ [SNAP_MAX_NODES] nodes)
+     * and always called AFTER the screenshot is taken, so it can never delay
+     * the capture itself.
+     */
+    fun collectSnapBounds(): SnapBounds? {
+        val bounds = windowManager.currentWindowMetrics.bounds
+        val display = Rect(0, 0, bounds.width(), bounds.height())
+        val minSide = dp(4)
+        val rects = HashSet<Rect>()
+        var budget = SNAP_MAX_NODES
+        var appWindows = 0
+        for (window in windows) {
+            // Application windows only: skips our own bubble/crop overlay
+            // (TYPE_ACCESSIBILITY_OVERLAY), the assist-session window (system
+            // layer), status/nav bars, and the IME — and naturally includes
+            // every app window in split-screen.
+            if (window.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+            if (window.displayId != Display.DEFAULT_DISPLAY) continue
+            val root = window.root ?: continue
+            // Belt and suspenders in case an OEM types our overlay oddly.
+            if (root.packageName == packageName) continue
+            appWindows++
+            budget = walkSnapNodes(root, 0, budget, display, minSide, rects)
+            if (budget <= 0) break
+        }
+        android.util.Log.d(
+            "CircleToShare",
+            "snap collect: ${windows.size} windows ($appWindows app), " +
+                "${rects.size} rects, ${SNAP_MAX_NODES - budget} nodes visited, " +
+                "screen ${display.width()}x${display.height()}"
+        )
+        return if (rects.isEmpty()) null else {
+            SnapBounds(rects.toList(), display.width(), display.height())
+        }
+    }
+
+    /** DFS over [node], collecting visible non-trivial bounds into [out].
+     *  Returns the remaining node budget. */
+    private fun walkSnapNodes(
+        node: AccessibilityNodeInfo,
+        depth: Int,
+        budgetIn: Int,
+        display: Rect,
+        minSide: Int,
+        out: MutableSet<Rect>
+    ): Int {
+        var budget = budgetIn - 1
+        if (budget < 0 || depth > SNAP_MAX_DEPTH) return 0
+        if (node.isVisibleToUser) {
+            val r = Rect()
+            node.getBoundsInScreen(r)
+            // Containers count too — cards and list rows are exactly the
+            // boundaries users want. Only dust (dividers, zero-size nodes)
+            // and off-screen bounds are dropped.
+            if (r.width() >= minSide && r.height() >= minSide && Rect.intersects(r, display)) {
+                out.add(r)
+            }
+        }
+        for (i in 0 until node.childCount) {
+            if (budget <= 0) return 0
+            val child = node.getChild(i) ?: continue
+            budget = walkSnapNodes(child, depth + 1, budget, display, minSide, out)
+        }
+        return budget
+    }
+
     // --- Floating bubble ----------------------------------------------------
 
     /** Re-apply the pref (called when the toggle changes). */
@@ -382,7 +465,10 @@ class ScreenshotAccessibilityService : AccessibilityService() {
             capture { bitmap ->
                 ui.post {
                     if (gen != bubbleCaptureGen) return@post // assistant took over
-                    if (bitmap != null) presentOverlay(bitmap) else {
+                    if (bitmap != null) {
+                        val snap = if (Prefs.isSnapEnabled(this)) collectSnapBounds() else null
+                        presentOverlay(bitmap, snap)
+                    } else {
                         Toast.makeText(
                             this, R.string.error_capture_failed, Toast.LENGTH_LONG
                         ).show()
@@ -419,7 +505,7 @@ class ScreenshotAccessibilityService : AccessibilityService() {
      *  include the overlay. Null if no bubble overlay is open. */
     fun openOverlayScreenshot(): Bitmap? = if (overlayView != null) overlayBitmap else null
 
-    private fun presentOverlay(bitmap: Bitmap) {
+    private fun presentOverlay(bitmap: Bitmap, snap: SnapBounds?) {
         ShareHelper.cleanupCache(this)
         teardownOverlay()
         overlayGen = bubbleCaptureGen
@@ -469,7 +555,7 @@ class ScreenshotAccessibilityService : AccessibilityService() {
         }
         windowManager.addView(screen, params)
         overlayView = screen
-        screen.setBitmap(bitmap)
+        screen.setBitmap(bitmap, snap)
         screen.requestFocus()
     }
 

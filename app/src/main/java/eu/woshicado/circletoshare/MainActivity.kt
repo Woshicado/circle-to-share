@@ -56,6 +56,16 @@ class MainActivity : AppCompatActivity() {
             if (syncingSwitches) return@setOnCheckedChangeListener
             Prefs.setFreeformCrop(this, checked)
         }
+
+        findViewById<MaterialSwitch>(R.id.switch_snap).setOnCheckedChangeListener { view, checked ->
+            if (syncingSwitches) return@setOnCheckedChangeListener
+            if (checked && ScreenshotAccessibilityService.instance == null) {
+                view.isChecked = false
+                Toast.makeText(this, R.string.error_snap_needs_accessibility, Toast.LENGTH_LONG).show()
+                return@setOnCheckedChangeListener
+            }
+            Prefs.setSnapEnabled(this, checked)
+        }
     }
 
     override fun onResume() {
@@ -88,6 +98,9 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<MaterialSwitch>(R.id.switch_freeform).isChecked =
             Prefs.isFreeformCrop(this)
+
+        findViewById<MaterialSwitch>(R.id.switch_snap).isChecked =
+            Prefs.isSnapEnabled(this)
         syncingSwitches = false
     }
 

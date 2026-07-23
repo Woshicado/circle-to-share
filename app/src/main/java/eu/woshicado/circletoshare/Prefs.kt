@@ -7,6 +7,7 @@ import android.graphics.Rect
 object Prefs {
     private const val NAME = "cts"
     private const val KEY_FREEFORM = "freeform_crop"
+    private const val KEY_SNAP = "snap_to_content"
     // Last delivered crop, in bitmap pixels, plus the source dimensions it was
     // taken against. Only a rectangle is stored — never any image data.
     private const val KEY_CROP_L = "last_crop_l"
@@ -24,6 +25,17 @@ object Prefs {
     fun setFreeformCrop(context: Context, enabled: Boolean) {
         context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_FREEFORM, enabled).apply()
+    }
+
+    /** True = crop edges snap to on-screen element bounds (needs the
+     *  accessibility service). Off by default. */
+    fun isSnapEnabled(context: Context): Boolean =
+        context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_SNAP, false)
+
+    fun setSnapEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_SNAP, enabled).apply()
     }
 
     /** Remember the last crop so it can be re-applied to a matching capture. */

@@ -27,6 +27,7 @@ Use any of these:
 - The app registers as a **digital assistant** (`VoiceInteractionService`). Whatever launches the assistant — a press-and-hold of the power button, or a swipe up from a bottom corner — now opens the crop overlay instead of Gemini/Google.
 - The system hands assistants a screenshot of the current screen (`onHandleScreenshot`), the same mechanism Circle to Search uses. On devices/ROMs that don't provide it to third-party assistants, an **accessibility service** (`AccessibilityService.takeScreenshot`) captures instead.
 - Shared images go out through a `FileProvider` URI backed by `cacheDir`; requiring no storage permission, no gallery entry, no cleanup chores.
+- **Snap to screen content** (optional, off by default): when enabled, crop edges snap to the buttons, cards, and images that were on screen, read from the accessibility node tree. Element *positions* are read once, at the moment of capture, solely to align the crop box — nothing is stored or transmitted. This is why the accessibility service declares the "retrieve window content" capability; leave the toggle off and the bounds are never read at all.
 
 ## Build & install
 
@@ -73,6 +74,8 @@ Screen capture is granted implicitly by the assistant/accessibility bindings, an
 - Apps that set `FLAG_SECURE` (banking, DRM video) can't be captured.
 - Tapping outside the selection clears it; with no selection, **Share full** sends the entire screen.
 - "Copy" puts the image on the clipboard (paste into messengers via Gboard etc.).
+- Shortcuts in the overlay: **double-tap inside** the box shares, **long-press inside** copies, **double-tap on empty space** (nothing selected) exits. The top hint becomes tappable when your previous crop fits the new capture — tap it to restore that exact box.
+- After an update that changes the accessibility service's declared capabilities (e.g. adding snap-to-content), Android may switch the service off — just re-enable it in Settings → Accessibility.
 
 ## Support
 
