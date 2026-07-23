@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#MISE description="Bump versionName (X.Y.Z) and versionCode in app/build.gradle.kts. Defaults to --patch."
+#USAGE flag "--major" help "Bump X (major): X.Y.Z -> (X+1).0.0"
+#USAGE flag "--minor" help "Bump Y (minor): X.Y.Z -> X.(Y+1).0"
+#USAGE flag "--patch" help "Bump Z (patch): X.Y.Z -> X.Y.(Z+1)  [default]"
+set -euo pipefail
+cd "${MISE_PROJECT_ROOT:-$(dirname "$0")/..}"
+
+GRADLE="app/build.gradle.kts"
+
+# Pick the level; default to patch. At most one flag allowed.
+level="patch"
+count=0
+[ "${usage_major:-false}" = "true" ] && { level="major"; count=$((count + 1)); }
+[ "${usage_minor:-false}" = "true" ] && { level="minor"; count=$((count + 1)); }
+[ "${usage_patch:-false}" = "true" ] && { level="patch"; count=$((count + 1)); }
+if [ "$count" -gt 1 ]; then
+    echo "Pass at most one of --major / --minor / --patch." >&2
+    exit 1
+fi
+
+# Read current values.
+current_name="$(grep -oE 'versionName = "[^"]+"' "$GRADLE" | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+current_code="$(grep -oE 'versionCode = [0-9]+' "$GRADLE" | head -1 | grep -oE '[0-9]+')"
+
+if [[ ! "$current_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "versionName '$current_name' is not in X.Y.Z form; can't bump automatically." >&2
+    exit 1
+fi
+
+IFS=. read -r X Y Z <<< "$current_name"
+case "$level" in
+    major) X=$((X + 1)); Y=0; Z=0 ;;
+    minor) Y=$((Y + 1)); Z=0 ;;
+    patch) Z=$((Z + 1)) ;;
+esac
+new_name="$X.$Y.$Z"
+new_code=$((current_code + 1))
+
+# Write both back (there is exactly one of each in the file).
+perl -i -pe "s/versionCode = [0-9]+/versionCode = $new_code/" "$GRADLE"
+perl -i -pe "s/versionName = \"[0-9]+\\.[0-9]+\\.[0-9]+\"/versionName = \"$new_name\"/" "$GRADLE"
+
+echo "Bumped ($level):"
+echo "  versionName: $current_name -> $new_name"
+echo "  versionCode: $current_code -> $new_code"
+echo
+echo "Next:"
+echo "  git commit -am \"Release v$new_name\" && git tag v$new_name && git push origin main v$new_name"
