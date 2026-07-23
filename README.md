@@ -9,7 +9,9 @@
 
 Grab the screen from anywhere, crop it, share it — without saving anything to your device. A replacement for the share flow Google removed from Circle to Search.
 
-Trigger it → the screen freezes → drag a rectangle → **Share** or **Copy**. The crop lives only in the app's private cache (auto-cleaned after an hour); nothing ever hits your gallery.
+Trigger it → the screen freezes → circle what you want → **Share** or **Copy**. The crop lives only in the app's private cache (auto-cleaned after an hour); nothing ever hits your gallery.
+
+The loop's outline becomes a crop box you can resize and reposition. Prefer dragging a rectangle directly? Turn off **Circle to crop** in the app.
 
 ## Triggering it
 

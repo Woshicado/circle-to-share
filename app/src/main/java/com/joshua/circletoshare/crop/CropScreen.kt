@@ -92,6 +92,11 @@ class CropScreen(context: Context) : FrameLayout(context) {
     }
 
     fun setBitmap(bitmap: android.graphics.Bitmap) {
+        // Apply the current crop-gesture preference (freeform circle vs. box).
+        val freeform = com.joshua.circletoshare.Prefs.isFreeformCrop(context)
+        cropView.freeform = freeform
+        hintView.setText(if (freeform) R.string.crop_hint_freeform else R.string.crop_hint)
+
         setBackgroundColor(Color.BLACK)
         cropView.setBitmap(bitmap)
         cropView.visibility = View.VISIBLE

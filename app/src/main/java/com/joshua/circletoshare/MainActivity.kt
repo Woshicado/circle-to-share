@@ -46,6 +46,11 @@ class MainActivity : AppCompatActivity() {
             }
             ScreenshotAccessibilityService.setBubblePref(this, checked)
         }
+
+        findViewById<MaterialSwitch>(R.id.switch_freeform).setOnCheckedChangeListener { view, checked ->
+            if (!view.isPressed) return@setOnCheckedChangeListener // ignore programmatic sync
+            Prefs.setFreeformCrop(this, checked)
+        }
     }
 
     override fun onResume() {
@@ -74,6 +79,9 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<MaterialSwitch>(R.id.switch_bubble).isChecked =
             ScreenshotAccessibilityService.isBubbleEnabled(this)
+
+        findViewById<MaterialSwitch>(R.id.switch_freeform).isChecked =
+            Prefs.isFreeformCrop(this)
     }
 
     private fun openFirstAvailable(vararg intents: Intent) {

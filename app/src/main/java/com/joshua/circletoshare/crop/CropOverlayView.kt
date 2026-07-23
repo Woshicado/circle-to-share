@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
@@ -32,12 +33,28 @@ class CropOverlayView @JvmOverloads constructor(
 
     var listener: Listener? = null
 
+    /**
+     * When true (default), the first gesture is a freeform "circle" — the user
+     * draws a loop/scribble and its bounding box becomes the crop box. When
+     * false, the gesture rubber-bands a rectangle corner-to-corner. Either way
+     * the resulting box is resized/moved with the same handles.
+     */
+    var freeform: Boolean = true
+
     private var bitmap: Bitmap? = null
     private val imageMatrix = Matrix()
     private val inverseMatrix = Matrix()
     private val imageBounds = RectF()
 
     private var selection: RectF? = null
+
+    // Freeform stroke state (only used while drawing a circle).
+    private val strokePath = Path()
+    private var hasStroke = false
+    private var strokeMinX = 0f
+    private var strokeMinY = 0f
+    private var strokeMaxX = 0f
+    private var strokeMaxY = 0f
 
     private enum class Mode { NONE, DRAWING, MOVING, RESIZING }
 
@@ -51,6 +68,8 @@ class CropOverlayView @JvmOverloads constructor(
     private val handleTouchRadius = dp(28f)
     private val minSelection = dp(24f)
     private val cornerLength = dp(20f)
+    // Breathing room so a hand-drawn loop doesn't clip the circled content.
+    private val strokePadding = dp(10f)
 
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val dimPaint = Paint().apply { color = Color.argb(140, 0, 0, 0) }
@@ -65,11 +84,19 @@ class CropOverlayView @JvmOverloads constructor(
         strokeWidth = dp(4f)
         strokeCap = Paint.Cap.ROUND
     }
+    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.argb(235, 255, 255, 255)
+        strokeWidth = dp(4f)
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
 
     fun setBitmap(b: Bitmap) {
         bitmap = b
         selection = null
         mode = Mode.NONE
+        resetStroke()
         updateMatrix()
         listener?.onSelectionChanged(false)
         invalidate()
@@ -79,7 +106,13 @@ class CropOverlayView @JvmOverloads constructor(
         bitmap = null
         selection = null
         mode = Mode.NONE
+        resetStroke()
         invalidate()
+    }
+
+    private fun resetStroke() {
+        strokePath.reset()
+        hasStroke = false
     }
 
     /** Selected region in bitmap coordinates, or null when nothing is selected. */
@@ -119,6 +152,8 @@ class CropOverlayView @JvmOverloads constructor(
         val sel = selection
         if (sel == null) {
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
+            // Show the freeform "circle" trail as the finger moves.
+            if (hasStroke) canvas.drawPath(strokePath, strokePaint)
             return
         }
 
@@ -166,15 +201,30 @@ class CropOverlayView @JvmOverloads constructor(
                     }
                     else -> Mode.DRAWING
                 }
+                if (mode == Mode.DRAWING && freeform) {
+                    // Start a fresh circle: drop any old box, begin the trail.
+                    selection = null
+                    strokePath.reset()
+                    strokePath.moveTo(x, y)
+                    strokeMinX = x; strokeMaxX = x
+                    strokeMinY = y; strokeMaxY = y
+                    hasStroke = true
+                }
             }
 
             MotionEvent.ACTION_MOVE -> {
                 when (mode) {
                     Mode.DRAWING -> {
-                        selection = RectF(
-                            min(downX, x), min(downY, y),
-                            max(downX, x), max(downY, y)
-                        )
+                        if (freeform) {
+                            strokePath.lineTo(x, y)
+                            strokeMinX = min(strokeMinX, x); strokeMaxX = max(strokeMaxX, x)
+                            strokeMinY = min(strokeMinY, y); strokeMaxY = max(strokeMaxY, y)
+                        } else {
+                            selection = RectF(
+                                min(downX, x), min(downY, y),
+                                max(downX, x), max(downY, y)
+                            )
+                        }
                     }
                     Mode.RESIZING -> selection?.let { resize(it, x, y) }
                     Mode.MOVING -> selection?.let { moveTo(it, x, y) }
@@ -184,12 +234,25 @@ class CropOverlayView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (mode == Mode.DRAWING &&
-                    hypot(x - downX, y - downY) < dp(8f)
-                ) {
-                    // A plain tap outside the selection clears it.
-                    selection = null
+                if (mode == Mode.DRAWING) {
+                    if (freeform) {
+                        if (hasStroke) {
+                            // Bounding box of the drawn loop — padded and clamped
+                            // to the image. The loop need not be closed.
+                            selection = RectF(
+                                max(strokeMinX - strokePadding, imageBounds.left),
+                                max(strokeMinY - strokePadding, imageBounds.top),
+                                min(strokeMaxX + strokePadding, imageBounds.right),
+                                min(strokeMaxY + strokePadding, imageBounds.bottom)
+                            )
+                        }
+                        resetStroke()
+                    } else if (hypot(x - downX, y - downY) < dp(8f)) {
+                        // A plain tap outside the selection clears it.
+                        selection = null
+                    }
                 }
+                // Discard incidental taps / tiny scribbles.
                 selection?.let {
                     if (it.width() < minSelection || it.height() < minSelection) {
                         selection = null
