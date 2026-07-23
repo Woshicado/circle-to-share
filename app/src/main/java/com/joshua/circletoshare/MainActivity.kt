@@ -15,6 +15,11 @@ import com.joshua.circletoshare.capture.ScreenshotAccessibilityService
 
 class MainActivity : AppCompatActivity() {
 
+    // True while updateStatus() writes the switches, so the listeners can tell
+    // programmatic sync from real input. (Checking view.isPressed instead would
+    // also drop toggles made via TalkBack or a keyboard.)
+    private var syncingSwitches = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -38,7 +43,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<MaterialSwitch>(R.id.switch_bubble).setOnCheckedChangeListener { view, checked ->
-            if (!view.isPressed) return@setOnCheckedChangeListener // ignore programmatic sync
+            if (syncingSwitches) return@setOnCheckedChangeListener
             if (checked && ScreenshotAccessibilityService.instance == null) {
                 view.isChecked = false
                 Toast.makeText(this, R.string.error_bubble_needs_accessibility, Toast.LENGTH_LONG).show()
@@ -47,8 +52,8 @@ class MainActivity : AppCompatActivity() {
             ScreenshotAccessibilityService.setBubblePref(this, checked)
         }
 
-        findViewById<MaterialSwitch>(R.id.switch_freeform).setOnCheckedChangeListener { view, checked ->
-            if (!view.isPressed) return@setOnCheckedChangeListener // ignore programmatic sync
+        findViewById<MaterialSwitch>(R.id.switch_freeform).setOnCheckedChangeListener { _, checked ->
+            if (syncingSwitches) return@setOnCheckedChangeListener
             Prefs.setFreeformCrop(this, checked)
         }
     }
@@ -77,11 +82,13 @@ class MainActivity : AppCompatActivity() {
             if (fallbackEnabled) R.string.status_fallback_on else R.string.status_fallback_off
         )
 
+        syncingSwitches = true
         findViewById<MaterialSwitch>(R.id.switch_bubble).isChecked =
             ScreenshotAccessibilityService.isBubbleEnabled(this)
 
         findViewById<MaterialSwitch>(R.id.switch_freeform).isChecked =
             Prefs.isFreeformCrop(this)
+        syncingSwitches = false
     }
 
     private fun openFirstAvailable(vararg intents: Intent) {

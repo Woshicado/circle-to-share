@@ -5,8 +5,9 @@ import android.service.voice.VoiceInteractionService
 import android.service.voice.VoiceInteractionSession
 
 /**
- * Registered as the device's digital assistant. Holding the gesture bar
- * (or long-pressing home) makes the system show our session.
+ * Registered as the device's digital assistant. Invoking the assistant
+ * (press-and-hold power, swipe up from a bottom corner, etc.) makes the system
+ * show our session.
  */
 class AssistInteractionService : VoiceInteractionService() {
 

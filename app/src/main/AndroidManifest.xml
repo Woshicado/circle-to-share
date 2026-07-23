@@ -7,9 +7,11 @@
       camera/mic/location. Screen capture is granted implicitly through the
       assistant/accessibility bindings, and sharing goes through a FileProvider.
 
-      AndroidX injects a private signature "self-permission" for securing its
-      dynamic broadcast receivers. We register none and don't use auto-battery
-      night mode, so we remove it to keep the manifest at zero permissions.
+      Our only runtime receiver listens to protected system broadcasts
+      (screen on/off, user-present) via the framework directly, which needs no
+      permission. AndroidX injects a private signature "self-permission" for its
+      own dynamic receivers (which we don't use), so we strip it to keep the
+      manifest at zero permissions.
     -->
     <uses-permission
         android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
@@ -34,7 +36,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Digital assistant entry point: holding the gesture bar launches this. -->
+        <!-- Digital assistant entry point: launched when the user invokes the assistant. -->
         <service
             android:name=".assist.AssistInteractionService"
             android:exported="true"

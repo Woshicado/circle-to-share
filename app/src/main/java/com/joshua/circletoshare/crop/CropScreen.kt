@@ -7,7 +7,6 @@ import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -103,6 +102,17 @@ class CropScreen(context: Context) : FrameLayout(context) {
         hintView.visibility = View.VISIBLE
         buttonBar.visibility = View.VISIBLE
         shareButton.text = context.getString(R.string.action_share_full)
+    }
+
+    /** Drop the frozen screenshot and hide the UI — the reverse of [setBitmap].
+     *  Called when the overlay is dismissed so a reused instance can't flash
+     *  the previous session's image. */
+    fun clear() {
+        background = null
+        cropView.clear()
+        cropView.visibility = View.GONE
+        hintView.visibility = View.GONE
+        buttonBar.visibility = View.GONE
     }
 
     private fun deliver(share: Boolean) {

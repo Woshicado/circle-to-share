@@ -133,6 +133,16 @@ class CropOverlayView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         updateMatrix()
+        // A screen-space selection is meaningless after a relayout (rotation):
+        // it maps to the wrong bitmap region and can exceed the new image
+        // bounds, making moveTo's coerceIn throw. Start over.
+        if (selection != null) {
+            selection = null
+            mode = Mode.NONE
+            activeCorner = -1
+            resetStroke()
+            listener?.onSelectionChanged(false)
+        }
     }
 
     private fun updateMatrix() {
@@ -311,8 +321,10 @@ class CropOverlayView @JvmOverloads constructor(
         val h = sel.height()
         var left = x - moveOffsetX
         var top = y - moveOffsetY
-        left = left.coerceIn(imageBounds.left, imageBounds.right - w)
-        top = top.coerceIn(imageBounds.top, imageBounds.bottom - h)
+        // The upper bound can fall below the lower one if the selection is ever
+        // wider/taller than the image — clamp it so coerceIn can't throw.
+        left = left.coerceIn(imageBounds.left, max(imageBounds.left, imageBounds.right - w))
+        top = top.coerceIn(imageBounds.top, max(imageBounds.top, imageBounds.bottom - h))
         sel.set(left, top, left + w, top + h)
     }
 

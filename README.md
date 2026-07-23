@@ -15,16 +15,18 @@ The loop's outline becomes a crop box you can resize and reposition. Prefer drag
 
 ## Triggering it
 
-Two independent ways — use either or both:
+Use any of these:
 
-- **Power button (press & hold)** — works via the digital-assistant role. This is the standard "invoke assistant" gesture and needs no on-screen UI.
-- **Floating bubble** — an optional, always-on-screen draggable button (toggle in the app). Tap it to capture from any app. Hosted by the accessibility service, so it works regardless of your launcher.
+- **Power button (press & hold)** — works via the digital-assistant role.
+- **Swipe up from a bottom corner** — another way to invoke the digital assistant, if enabled in your system settings.
+- **Floating bubble** — an optional, always-on-screen draggable button (toggle in the app). Tap it to capture from any app.
+- _Or any other way that starts your digital assistant_
 
 ## How it works
 
-- The app registers as a **digital assistant** (`VoiceInteractionService`). Whatever launches the assistant — holding the gesture bar in gesture navigation, long-pressing home with buttons — now opens the crop overlay instead of Gemini/Google.
-- The system hands assistants a screenshot of the current screen (`onHandleScreenshot`), the same mechanism Circle to Search uses. On devices/ROMs that don't provide it to third-party assistants, an **accessibility service** (`AccessibilityService.takeScreenshot`) captures instead — enabled as an optional fallback in setup.
-- Shared images go out through a `FileProvider` URI backed by `cacheDir` — no storage permission, no gallery entry, no cleanup chores.
+- The app registers as a **digital assistant** (`VoiceInteractionService`). Whatever launches the assistant — a press-and-hold of the power button, or a swipe up from a bottom corner — now opens the crop overlay instead of Gemini/Google.
+- The system hands assistants a screenshot of the current screen (`onHandleScreenshot`), the same mechanism Circle to Search uses. On devices/ROMs that don't provide it to third-party assistants, an **accessibility service** (`AccessibilityService.takeScreenshot`) captures instead.
+- Shared images go out through a `FileProvider` URI backed by `cacheDir`; requiring no storage permission, no gallery entry, no cleanup chores.
 
 ## Build & install
 
@@ -68,8 +70,8 @@ Screen capture is granted implicitly by the assistant/accessibility bindings, an
 
 ## Notes
 
-- Apps that set `FLAG_SECURE` (banking, DRM video) can't be captured — you'll get a toast instead.
-- Tapping outside the selection clears it; with no selection, **Share full** sends the whole screen.
+- Apps that set `FLAG_SECURE` (banking, DRM video) can't be captured.
+- Tapping outside the selection clears it; with no selection, **Share full** sends the entire screen.
 - "Copy" puts the image on the clipboard (paste into messengers via Gboard etc.).
 
 ## Support

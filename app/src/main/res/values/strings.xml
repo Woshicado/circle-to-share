@@ -2,10 +2,10 @@
 <resources>
     <string name="app_name">Circle to Share</string>
 
-    <string name="setup_intro">Hold the gesture bar anywhere to grab the screen, crop it, and share it — without saving anything to your device.</string>
+    <string name="setup_intro">Grab the screen from anywhere, crop it, and share it — without saving anything to your device.</string>
 
     <string name="setup_step1_title">1. Set as your assistant</string>
-    <string name="setup_step1_body">Choose Circle to Share as the digital assistant app (Default digital assistant app → Circle to Share). This makes holding the gesture bar open the crop overlay. If a \"Use screenshot\" toggle is shown there, enable it.</string>
+    <string name="setup_step1_body">Choose Circle to Share as the digital assistant app (Default digital assistant app → Circle to Share). This makes the assistant gesture — press and hold the power button, or swipe up from a bottom corner — open the crop overlay. If a \"Use screenshot\" toggle is shown there, enable it.</string>
     <string name="status_assistant_on">✓ Active as assistant</string>
     <string name="status_assistant_off">✗ Not set as assistant yet</string>
     <string name="btn_assistant_settings">Open assistant settings</string>
@@ -17,11 +17,11 @@
     <string name="btn_accessibility_settings">Open accessibility settings</string>
 
     <string name="setup_step3_title">3. Try it</string>
-    <string name="setup_step3_body">Hold the gesture bar (or long-press home), drag a rectangle over what you want, then hit Share. Tip: the test button below captures this screen.</string>
+    <string name="setup_step3_body">Invoke your assistant (hold the power button, or swipe up from a bottom corner), circle what you want, then hit Share. Tip: the test button below captures this screen.</string>
     <string name="btn_test">Test capture</string>
 
     <string name="triggers_title">How to open it</string>
-    <string name="triggers_body">Two independent ways to trigger a capture — use either or both:\n\n• Power button: press and hold (works via the assistant role from step 1). Set under System → Gestures → Press &amp; hold power button → Digital assistant, if it opens the power menu instead.\n\n• Floating button (below): the app\'s own always-on-screen bubble you can tap from any app. Drag it anywhere; it stays out of the way. Needs the accessibility fallback (step 2) enabled.</string>
+    <string name="triggers_body">Ways to trigger a capture — use any of them:\n\n• Power button: press and hold (works via the assistant role from step 1). Set under System → Gestures → Press &amp; hold power button → Digital assistant, if it opens the power menu instead.\n\n• Corner swipe: swipe up from a bottom corner — another way to invoke the assistant from step 1, if enabled in your system settings.\n\n• Floating button (below): the app\'s own always-on-screen bubble you can tap from any app. Drag it anywhere; it stays out of the way. Needs the accessibility fallback (step 2) enabled.</string>
     <string name="switch_bubble">Show floating capture button</string>
     <string name="switch_bubble_note">A small draggable bubble on screen. Tap it to capture, crop, and share from anywhere.</string>
     <string name="error_bubble_needs_accessibility">Enable the accessibility fallback (step 2) first — the bubble runs on it.</string>
@@ -43,5 +43,5 @@
     <string name="error_no_settings">Couldn\'t open settings on this device.</string>
 
     <string name="accessibility_service_label">Circle to Share</string>
-    <string name="accessibility_service_description">Lets Circle to Share capture the screen when the assistant gesture is used, so you can crop and share it. Nothing is captured until you trigger the gesture, and nothing is saved to your device.</string>
+    <string name="accessibility_service_description">Lets Circle to Share capture the screen when you trigger it — with the assistant gesture or the app\'s floating button — so you can crop and share it. Nothing is captured until you trigger it, and nothing is saved to your device.</string>
 </resources>
