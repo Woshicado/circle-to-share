@@ -28,6 +28,7 @@
 
     <string name="crop_hint">Drag to crop — or share the full screen</string>
     <string name="crop_hint_freeform">Circle what you want — or share the full screen</string>
+    <string name="crop_hint_restore">Tap to restore your last crop</string>
     <string name="switch_freeform">Circle to crop</string>
     <string name="switch_freeform_note">Draw a freeform loop around what you want and its outline becomes the crop box. Turn off to drag a rectangle directly.</string>
     <string name="action_cancel">Cancel</string>

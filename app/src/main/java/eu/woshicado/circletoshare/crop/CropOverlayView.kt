@@ -11,6 +11,8 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.GestureDetector
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.abs
@@ -29,6 +31,12 @@ class CropOverlayView @JvmOverloads constructor(
 
     interface Listener {
         fun onSelectionChanged(hasSelection: Boolean)
+        /** Double-tap inside the crop box. */
+        fun onDoubleTapInside() {}
+        /** Long-press held inside the crop box. */
+        fun onLongPressInside() {}
+        /** Double-tap on empty space with no selection. */
+        fun onDoubleTapEmpty() {}
     }
 
     var listener: Listener? = null
@@ -64,6 +72,45 @@ class CropOverlayView @JvmOverloads constructor(
     private var downY = 0f
     private var moveOffsetX = 0f
     private var moveOffsetY = 0f
+
+    // Set when a double-tap / long-press has been handled for the current touch
+    // stream, so the drawing/move/resize logic ignores the rest of the gesture.
+    private var gestureHandled = false
+
+    private val gestureDetector = GestureDetector(
+        context,
+        object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                val x = e.x.coerceIn(imageBounds.left, imageBounds.right)
+                val y = e.y.coerceIn(imageBounds.top, imageBounds.bottom)
+                val sel = selection
+                when {
+                    sel != null && sel.contains(x, y) -> {
+                        gestureHandled = true
+                        listener?.onDoubleTapInside()
+                    }
+                    // Exit only when there is nothing selected, so double-tapping
+                    // outside a box doesn't fight the tap-to-clear gesture.
+                    sel == null -> {
+                        gestureHandled = true
+                        listener?.onDoubleTapEmpty()
+                    }
+                }
+                return true
+            }
+
+            override fun onLongPress(e: MotionEvent) {
+                val x = e.x.coerceIn(imageBounds.left, imageBounds.right)
+                val y = e.y.coerceIn(imageBounds.top, imageBounds.bottom)
+                val sel = selection ?: return
+                if (sel.contains(x, y)) {
+                    gestureHandled = true
+                    performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    listener?.onLongPressInside()
+                }
+            }
+        }
+    )
 
     private val handleTouchRadius = dp(28f)
     private val minSelection = dp(24f)
@@ -130,6 +177,34 @@ class CropOverlayView @JvmOverloads constructor(
         return if (rect.width() > 4 && rect.height() > 4) rect else null
     }
 
+    /** Dimensions of the frozen screenshot, or null when none is set. */
+    fun getBitmapSize(): Pair<Int, Int>? = bitmap?.let { it.width to it.height }
+
+    /**
+     * Re-apply a previously saved crop ([rect] in bitmap pixels), mapping it
+     * back into screen space and clamping to the image. No-op if the view isn't
+     * laid out yet or the mapped box is too small.
+     */
+    fun applyCropRect(rect: Rect) {
+        bitmap ?: return
+        if (imageBounds.isEmpty) return
+        val mapped = RectF(rect)
+        imageMatrix.mapRect(mapped)
+        mapped.set(
+            mapped.left.coerceIn(imageBounds.left, imageBounds.right),
+            mapped.top.coerceIn(imageBounds.top, imageBounds.bottom),
+            mapped.right.coerceIn(imageBounds.left, imageBounds.right),
+            mapped.bottom.coerceIn(imageBounds.top, imageBounds.bottom)
+        )
+        if (mapped.width() < minSelection || mapped.height() < minSelection) return
+        selection = mapped
+        mode = Mode.NONE
+        activeCorner = -1
+        resetStroke()
+        listener?.onSelectionChanged(true)
+        invalidate()
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         updateMatrix()
@@ -192,6 +267,17 @@ class CropOverlayView @JvmOverloads constructor(
         if (bitmap == null) return false
         val x = event.x.coerceIn(imageBounds.left, imageBounds.right)
         val y = event.y.coerceIn(imageBounds.top, imageBounds.bottom)
+
+        // A fresh touch stream starts un-handled; let the detector inspect it
+        // first so a double-tap or long-press can claim it.
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) gestureHandled = false
+        gestureDetector.onTouchEvent(event)
+        if (gestureHandled) {
+            // The gesture (share/copy/exit) owns this stream — skip drawing and
+            // drop any in-progress stroke so it doesn't linger as a stray box.
+            if (hasStroke) resetStroke()
+            return true
+        }
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {

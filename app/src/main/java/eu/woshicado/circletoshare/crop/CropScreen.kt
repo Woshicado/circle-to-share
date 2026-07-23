@@ -32,6 +32,10 @@ class CropScreen(context: Context) : FrameLayout(context) {
     private val buttonBar: LinearLayout
     private val shareButton: TextView
 
+    // Saved crop offered by the tappable hint, or null when none is available
+    // for the current capture.
+    private var pendingRestore: Rect? = null
+
     init {
         cropView.visibility = View.GONE
         cropView.listener = object : CropOverlayView.Listener {
@@ -40,6 +44,12 @@ class CropScreen(context: Context) : FrameLayout(context) {
                     if (hasSelection) R.string.action_share else R.string.action_share_full
                 )
                 hintView.visibility = if (hasSelection) View.GONE else View.VISIBLE
+            }
+
+            override fun onDoubleTapInside() = deliver(share = true)
+            override fun onLongPressInside() = deliver(share = false)
+            override fun onDoubleTapEmpty() {
+                callbacks?.onCancel()
             }
         }
         addView(
@@ -94,7 +104,6 @@ class CropScreen(context: Context) : FrameLayout(context) {
         // Apply the current crop-gesture preference (freeform circle vs. box).
         val freeform = eu.woshicado.circletoshare.Prefs.isFreeformCrop(context)
         cropView.freeform = freeform
-        hintView.setText(if (freeform) R.string.crop_hint_freeform else R.string.crop_hint)
 
         setBackgroundColor(Color.BLACK)
         cropView.setBitmap(bitmap)
@@ -102,6 +111,19 @@ class CropScreen(context: Context) : FrameLayout(context) {
         hintView.visibility = View.VISIBLE
         buttonBar.visibility = View.VISIBLE
         shareButton.text = context.getString(R.string.action_share_full)
+
+        // Offer to restore the last crop only when it fits this exact capture.
+        pendingRestore = eu.woshicado.circletoshare.Prefs
+            .getLastCropFor(context, bitmap.width, bitmap.height)
+        if (pendingRestore != null) {
+            hintView.setText(R.string.crop_hint_restore)
+            hintView.isClickable = true
+            hintView.setOnClickListener { pendingRestore?.let { cropView.applyCropRect(it) } }
+        } else {
+            hintView.setText(if (freeform) R.string.crop_hint_freeform else R.string.crop_hint)
+            hintView.isClickable = false
+            hintView.setOnClickListener(null)
+        }
     }
 
     /** Drop the frozen screenshot and hide the UI — the reverse of [setBitmap].
@@ -116,7 +138,15 @@ class CropScreen(context: Context) : FrameLayout(context) {
     }
 
     private fun deliver(share: Boolean) {
-        callbacks?.onDeliver(share, cropView.getCropRect())
+        val rect = cropView.getCropRect()
+        // Remember an actual selection so it can be restored next time; a
+        // full-screen share (null rect) leaves the previous memory untouched.
+        if (rect != null) {
+            cropView.getBitmapSize()?.let { (w, h) ->
+                eu.woshicado.circletoshare.Prefs.saveLastCrop(context, rect, w, h)
+            }
+        }
+        callbacks?.onDeliver(share, rect)
     }
 
     private fun pillButton(label: String, filled: Boolean, onClick: () -> Unit): TextView =
