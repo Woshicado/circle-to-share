@@ -1,4 +1,4 @@
-package com.joshua.circletoshare.crop
+package eu.woshicado.circletoshare.crop
 
 import android.annotation.SuppressLint
 import android.content.Context

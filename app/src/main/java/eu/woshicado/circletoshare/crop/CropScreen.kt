@@ -1,4 +1,4 @@
-package com.joshua.circletoshare.crop
+package eu.woshicado.circletoshare.crop
 
 import android.content.Context
 import android.graphics.Color
@@ -10,7 +10,7 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.joshua.circletoshare.R
+import eu.woshicado.circletoshare.R
 
 /**
  * The full crop overlay UI — frozen screenshot, draggable crop rectangle, and
@@ -92,7 +92,7 @@ class CropScreen(context: Context) : FrameLayout(context) {
 
     fun setBitmap(bitmap: android.graphics.Bitmap) {
         // Apply the current crop-gesture preference (freeform circle vs. box).
-        val freeform = com.joshua.circletoshare.Prefs.isFreeformCrop(context)
+        val freeform = eu.woshicado.circletoshare.Prefs.isFreeformCrop(context)
         cropView.freeform = freeform
         hintView.setText(if (freeform) R.string.crop_hint_freeform else R.string.crop_hint)
 

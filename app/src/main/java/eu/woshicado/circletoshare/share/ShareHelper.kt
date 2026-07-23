@@ -1,4 +1,4 @@
-package com.joshua.circletoshare.share
+package eu.woshicado.circletoshare.share
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -9,7 +9,7 @@ import android.graphics.Rect
 import android.net.Uri
 import android.widget.Toast
 import androidx.core.content.FileProvider
-import com.joshua.circletoshare.R
+import eu.woshicado.circletoshare.R
 import java.io.File
 
 /**
@@ -18,7 +18,7 @@ import java.io.File
  */
 object ShareHelper {
 
-    private const val AUTHORITY = "com.joshua.circletoshare.fileprovider"
+    private const val AUTHORITY = "eu.woshicado.circletoshare.fileprovider"
     private const val DIR = "shots"
     private const val MAX_AGE_MS = 60L * 60L * 1000L // 1 hour
 

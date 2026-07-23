@@ -1,4 +1,4 @@
-package com.joshua.circletoshare
+package eu.woshicado.circletoshare
 
 import android.content.Context
 

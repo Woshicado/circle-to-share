@@ -81,7 +81,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.joshua.circletoshare.fileprovider"
+            android:authorities="eu.woshicado.circletoshare.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

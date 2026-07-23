@@ -1,4 +1,4 @@
-package com.joshua.circletoshare.assist
+package eu.woshicado.circletoshare.assist
 
 import android.service.voice.VoiceInteractionSession
 import android.service.voice.VoiceInteractionSessionService

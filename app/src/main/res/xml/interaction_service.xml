@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:sessionService="com.joshua.circletoshare.assist.AssistSessionService"
-    android:recognitionService="com.joshua.circletoshare.assist.StubRecognitionService"
+    android:sessionService="eu.woshicado.circletoshare.assist.AssistSessionService"
+    android:recognitionService="eu.woshicado.circletoshare.assist.StubRecognitionService"
     android:supportsAssist="true" />

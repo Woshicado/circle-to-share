@@ -22,11 +22,11 @@ val releaseStoreFile = signingValue("storeFile", "KEYSTORE_FILE")
 val hasReleaseSigning = releaseStoreFile != null
 
 android {
-    namespace = "com.joshua.circletoshare"
+    namespace = "eu.woshicado.circletoshare"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.joshua.circletoshare"
+        applicationId = "eu.woshicado.circletoshare"
         minSdk = 31
         targetSdk = 36
         versionCode = 2

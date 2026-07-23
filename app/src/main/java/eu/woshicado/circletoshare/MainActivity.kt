@@ -1,4 +1,4 @@
-package com.joshua.circletoshare
+package eu.woshicado.circletoshare
 
 import android.app.role.RoleManager
 import android.content.ActivityNotFoundException
@@ -10,8 +10,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.materialswitch.MaterialSwitch
-import com.joshua.circletoshare.assist.AssistInteractionService
-import com.joshua.circletoshare.capture.ScreenshotAccessibilityService
+import eu.woshicado.circletoshare.assist.AssistInteractionService
+import eu.woshicado.circletoshare.capture.ScreenshotAccessibilityService
 
 class MainActivity : AppCompatActivity() {
 

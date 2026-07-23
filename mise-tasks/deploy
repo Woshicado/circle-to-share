@@ -70,14 +70,14 @@ fi
 
 echo "Installing $variant: $APK …"
 if out="$("$ADB" install -r "$APK" 2>&1)"; then
-    echo "Installed com.joshua.circletoshare ($variant)."
+    echo "Installed eu.woshicado.circletoshare ($variant)."
 else
     echo "$out" >&2
     if echo "$out" | grep -qiE "SIGNATURE|signatures do not match|UPDATE_INCOMPATIBLE|INCONSISTENT"; then
         echo >&2
         echo "Signature mismatch: the installed app was signed with a different key" >&2
         echo "(switching between debug and release). Uninstall it first, then retry:" >&2
-        echo "    $ADB uninstall com.joshua.circletoshare" >&2
+        echo "    $ADB uninstall eu.woshicado.circletoshare" >&2
         echo "(That clears the app's accessibility/assistant grants.)" >&2
     fi
     exit 1

@@ -1,4 +1,4 @@
-package com.joshua.circletoshare.capture
+package eu.woshicado.circletoshare.capture
 
 import android.accessibilityservice.AccessibilityService
 import android.app.KeyguardManager
@@ -25,9 +25,9 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.widget.ImageView
 import android.widget.Toast
-import com.joshua.circletoshare.R
-import com.joshua.circletoshare.crop.CropScreen
-import com.joshua.circletoshare.share.ShareHelper
+import eu.woshicado.circletoshare.R
+import eu.woshicado.circletoshare.crop.CropScreen
+import eu.woshicado.circletoshare.share.ShareHelper
 import kotlin.math.abs
 
 /**

@@ -1,4 +1,4 @@
-package com.joshua.circletoshare.assist
+package eu.woshicado.circletoshare.assist
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -16,10 +16,10 @@ import android.view.Display
 import android.view.View
 import android.widget.Toast
 import androidx.core.view.WindowCompat
-import com.joshua.circletoshare.R
-import com.joshua.circletoshare.capture.ScreenshotAccessibilityService
-import com.joshua.circletoshare.crop.CropScreen
-import com.joshua.circletoshare.share.ShareHelper
+import eu.woshicado.circletoshare.R
+import eu.woshicado.circletoshare.capture.ScreenshotAccessibilityService
+import eu.woshicado.circletoshare.crop.CropScreen
+import eu.woshicado.circletoshare.share.ShareHelper
 
 /**
  * Full-screen overlay shown when the assistant gesture fires: displays the
