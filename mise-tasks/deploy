@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#MISE description="Install the app on a connected device (adb). With --build, builds first (debug, or release with --release); without --build, installs the newest existing APK."
+#USAGE flag "--build" help "Build before installing"
+#USAGE flag "--release" help "Target the release (signed) variant"
+#USAGE flag "--debug" help "Target the debug variant explicitly"
+set -euo pipefail
+cd "${MISE_PROJECT_ROOT:-$(dirname "$0")/..}"
+
+DEBUG_APK="app/build/outputs/apk/debug/app-debug.apk"
+RELEASE_APK="app/build/outputs/apk/release/app-release.apk"
+
+# Prefer adb on PATH, else the default Android SDK location.
+if command -v adb >/dev/null 2>&1; then
+    ADB="adb"
+else
+    ADB="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}/platform-tools/adb"
+fi
+
+if ! "$ADB" get-state >/dev/null 2>&1; then
+    echo "No device connected via adb (need exactly one, USB debugging on)." >&2
+    "$ADB" devices >&2 || true
+    exit 1
+fi
+
+build="${usage_build:-false}"
+want_release="${usage_release:-false}"
+want_debug="${usage_debug:-false}"
+
+if [ "$want_release" = "true" ] && [ "$want_debug" = "true" ]; then
+    echo "Pass at most one of --release / --debug." >&2
+    exit 1
+fi
+
+variant=""
+if [ "$build" = "true" ]; then
+    # Building: debug by default, release if requested.
+    if [ "$want_release" = "true" ]; then
+        variant="release"
+        echo "Building release APK…"
+        ./gradlew assembleRelease
+    else
+        variant="debug"
+        echo "Building debug APK…"
+        ./gradlew assembleDebug
+    fi
+elif [ "$want_release" = "true" ]; then
+    variant="release"
+elif [ "$want_debug" = "true" ]; then
+    variant="debug"
+else
+    # No variant specified and not building: install whichever APK is newest.
+    if [ -f "$DEBUG_APK" ] && [ -f "$RELEASE_APK" ]; then
+        if [ "$RELEASE_APK" -nt "$DEBUG_APK" ]; then variant="release"; else variant="debug"; fi
+    elif [ -f "$RELEASE_APK" ]; then
+        variant="release"
+    elif [ -f "$DEBUG_APK" ]; then
+        variant="debug"
+    else
+        echo "No APK found. Build one first: 'mise run deploy --build' (add --release for the signed build)." >&2
+        exit 1
+    fi
+fi
+
+if [ "$variant" = "release" ]; then APK="$RELEASE_APK"; else APK="$DEBUG_APK"; fi
+
+if [ ! -f "$APK" ]; then
+    echo "No $variant APK at $APK — build it first (add --build)." >&2
+    exit 1
+fi
+
+echo "Installing $variant: $APK …"
+if out="$("$ADB" install -r "$APK" 2>&1)"; then
+    echo "Installed com.joshua.circletoshare ($variant)."
+else
+    echo "$out" >&2
+    if echo "$out" | grep -qiE "SIGNATURE|signatures do not match|UPDATE_INCOMPATIBLE|INCONSISTENT"; then
+        echo >&2
+        echo "Signature mismatch: the installed app was signed with a different key" >&2
+        echo "(switching between debug and release). Uninstall it first, then retry:" >&2
+        echo "    $ADB uninstall com.joshua.circletoshare" >&2
+        echo "(That clears the app's accessibility/assistant grants.)" >&2
+    fi
+    exit 1
+fi

@@ -1,0 +1,18 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Signing — never commit these
+keystore.properties
+*.jks
+*.keystore
+
+# Kept locally only, not in the repo
+RELEASING.md
+CHANGELOG.md

@@ -1,0 +1,82 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+// Release signing is read from keystore.properties (local, gitignored) or, if
+// that's absent, from environment variables (used by CI). See RELEASING.md.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        FileInputStream(keystorePropertiesFile).use { load(it) }
+    }
+}
+
+fun signingValue(propKey: String, envKey: String): String? =
+    keystoreProperties.getProperty(propKey) ?: System.getenv(envKey)
+
+val releaseStoreFile = signingValue("storeFile", "KEYSTORE_FILE")
+val hasReleaseSigning = releaseStoreFile != null
+
+android {
+    namespace = "com.joshua.circletoshare"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "com.joshua.circletoshare"
+        minSdk = 31
+        targetSdk = 36
+        versionCode = 1
+        versionName = "0.1.0"
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                // Resolve relative paths against the project root (where
+                // release.jks lives), not the app module. Absolute paths
+                // (e.g. CI's $RUNNER_TEMP/release.jks) pass through unchanged.
+                storeFile = rootProject.file(releaseStoreFile!!)
+                storePassword = signingValue("storePassword", "KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                // Local convenience: an unconfigured release build is still
+                // installable via the debug key. CI always sets the real key.
+                logger.warn("No release keystore configured — signing release with the debug key.")
+                signingConfigs.getByName("debug")
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
+}

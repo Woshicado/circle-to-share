@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="Build the debug APK"
+#USAGE flag "--release" help "Build the signed release APK instead of debug"
+set -euo pipefail
+cd "${MISE_PROJECT_ROOT:-$(dirname "$0")/..}"
+
+if [ "${usage_release:-false}" = "true" ]; then
+    ./gradlew assembleRelease
+    echo "APK: app/build/outputs/apk/release/app-release.apk"
+else
+    ./gradlew assembleDebug
+    echo "APK: app/build/outputs/apk/debug/app-debug.apk"
+fi

@@ -1,0 +1,6 @@
+# Android Gradle Plugin 8.10 runs on JDK 17 (not the system's newer JDK).
+# mise provides it and sets JAVA_HOME for the tasks below.
+[tools]
+java = "temurin-17"
+
+# Tasks live in ./mise-tasks (run `mise tasks` to list, `mise run <name>`).
