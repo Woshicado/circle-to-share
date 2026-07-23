@@ -1,35 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon artwork (ic_launcher_foreground) with the viewport cropped
+     to the drawn bounds, so it fills the bubble's padded content area. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <!-- Crop corner brackets -->
-    <path
-        android:pathData="M8,5 L5,5 Q4,5 4,6 L4,9"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.8"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M16,5 L19,5 Q20,5 20,6 L20,9"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.8"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M8,19 L5,19 Q4,19 4,18 L4,15"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.8"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M16,19 L19,19 Q20,19 20,18 L20,15"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.8"
-        android:strokeLineCap="round" />
-    <!-- Share arrow -->
-    <path
-        android:pathData="M12,15 L12,9 M9.5,11.5 L12,9 L14.5,11.5"
-        android:strokeColor="#7FDBCA"
-        android:strokeWidth="1.8"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+    android:viewportWidth="66"
+    android:viewportHeight="66">
+    <group android:translateX="-20.25" android:translateY="-22.75">
+        <path android:pathData="M28 44 V32 A4 4 0 0 1 32 28 H44" android:strokeColor="#E8E8FF" android:strokeWidth="8" android:strokeLineCap="round"/>
+        <path android:pathData="M64 28 H76 A4 4 0 0 1 80 32 V44" android:strokeColor="#E8E8FF" android:strokeWidth="8" android:strokeLineCap="round"/>
+        <path android:pathData="M80 64 V76 A4 4 0 0 1 76 80 H64" android:strokeColor="#E8E8FF" android:strokeWidth="8" android:strokeLineCap="round"/>
+        <path android:pathData="M33 68.5 L42 63 M33 75.5 L42 81" android:strokeColor="#E8E8FF" android:strokeWidth="5" android:strokeLineCap="round"/>
+        <path android:pathData="M38.5,62 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0" android:fillColor="#E8E8FF"/>
+        <path android:pathData="M22.5,72 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0" android:fillColor="#E8E8FF"/>
+        <path android:pathData="M38.5,82 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0" android:fillColor="#E8E8FF"/>
+    </group>
 </vector>

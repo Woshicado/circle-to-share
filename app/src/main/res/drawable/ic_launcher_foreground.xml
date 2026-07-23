@@ -1,35 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- Crop corner brackets -->
-    <path
-        android:pathData="M34,30 L30,30 Q28,30 28,32 L28,36"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M74,30 L78,30 Q80,30 80,32 L80,36"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M34,78 L30,78 Q28,78 28,76 L28,72"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M74,78 L78,78 Q80,78 80,76 L80,72"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round" />
-    <!-- Share arrow -->
-    <path
-        android:pathData="M54,64 L54,44 M46,52 L54,44 L62,52"
-        android:strokeColor="#7FDBCA"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+  <!-- Scale/translate center the artwork (drawn bounds 22.5..84 x 24..87.5)
+       on the 108dp canvas at ~47dp span, inside the 66dp adaptive safe zone. -->
+  <group android:scaleX="0.75" android:scaleY="0.75" android:pivotX="53.25" android:pivotY="55.75"
+      android:translateX="0.75" android:translateY="-1.75">
+  <path android:pathData="M28 44 V32 A4 4 0 0 1 32 28 H44" android:strokeColor="#E8E8FF" android:strokeWidth="8" android:strokeLineCap="round"/>
+  <path android:pathData="M64 28 H76 A4 4 0 0 1 80 32 V44" android:strokeColor="#E8E8FF" android:strokeWidth="8" android:strokeLineCap="round"/>
+  <path android:pathData="M80 64 V76 A4 4 0 0 1 76 80 H64" android:strokeColor="#E8E8FF" android:strokeWidth="8" android:strokeLineCap="round"/>
+  <path android:pathData="M33 68.5 L42 63 M33 75.5 L42 81" android:strokeColor="#E8E8FF" android:strokeWidth="5" android:strokeLineCap="round"/>
+  <path android:pathData="M38.5,62 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0" android:fillColor="#E8E8FF"/>
+  <path android:pathData="M22.5,72 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0" android:fillColor="#E8E8FF"/>
+  <path android:pathData="M38.5,82 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0" android:fillColor="#E8E8FF"/>
+  </group>
 </vector>

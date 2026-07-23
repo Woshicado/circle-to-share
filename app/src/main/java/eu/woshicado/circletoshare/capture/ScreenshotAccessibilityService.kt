@@ -279,7 +279,7 @@ class ScreenshotAccessibilityService : AccessibilityService() {
             setPadding(pad, pad, pad, pad)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.argb(235, 26, 28, 44))
+                setColor(Color.argb(235, 52, 43, 109))
                 setStroke(dp(1), Color.argb(90, 255, 255, 255))
             }
         }
